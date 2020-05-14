@@ -211,7 +211,7 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id):
                     if args.model_type in ["bert", "xlnet", "layoutlm"]
                     else None
                 )  # XLM and RoBERTa don"t use segment_ids
-
+                
             outputs = model(**inputs)
             loss = outputs[
                 0
@@ -686,10 +686,20 @@ def main():
 
     if args.overwrite_output_dir and os.path.exists(args.output_dir):
         shutil.rmtree(args.output_dir)
-    os.makedirs(args.output_dir)
+
+    if args.do_train: os.makedirs(args.output_dir)
+        
+    log_name = None
+    if args.do_train:
+        log_name = 'train.log'
+    if args.do_eval:
+        log_name = 'eval.log'
+    if args.do_predict:
+        log_name = 'pred.log'
+        
     # Setup logging
     logging.basicConfig(
-        filename=os.path.join(args.output_dir, "train.log"),
+        filename=os.path.join(args.output_dir, log_name),
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
         level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
@@ -798,7 +808,7 @@ def main():
                 tokenizer,
                 labels,
                 pad_token_label_id,
-                mode="dev",
+                mode="test",
                 prefix=global_step,
             )
             if global_step:
@@ -810,11 +820,15 @@ def main():
                 writer.write("{} = {}\n".format(key, str(results[key])))
 
     if args.do_predict and args.local_rank in [-1, 0]:
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
-        )
-        model = model_class.from_pretrained(args.output_dir)
-        model.to(args.device)
+        if False: # Already loaded
+            tokenizer = tokenizer_class.from_pretrained(
+                args.output_dir, 
+                do_lower_case=args.do_lower_case
+            )
+        
+            model = model_class.from_pretrained(args.output_dir)
+            model.to(args.device)
+            
         result, predictions = evaluate(
             args, model, tokenizer, labels, pad_token_label_id, mode="test"
         )
@@ -827,8 +841,8 @@ def main():
         output_test_predictions_file = os.path.join(
             args.output_dir, "test_predictions.txt"
         )
-        with open(output_test_predictions_file, "w") as writer:
-            with open(os.path.join(args.data_dir, "test.txt"), "r") as f:
+        with open(output_test_predictions_file, "w", encoding='utf8') as writer:
+            with open(os.path.join(args.data_dir, "test.txt"), "r", encoding='utf8') as f:
                 example_id = 0
                 for line in f:
                     if line.startswith("-DOCSTART-") or line == "" or line == "\n":

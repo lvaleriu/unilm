@@ -1,6 +1,7 @@
 import os
 import json
 import argparse
+import get_image_size
 from PIL import Image
 from transformers import BertTokenizer, RobertaTokenizer, DistilBertTokenizer
 
@@ -33,14 +34,24 @@ def convert(args):
                 data = json.load(f)
             image_path = file_path.replace("annotations", "images")
             image_path = image_path.replace("json", "png")
-            image = Image.open(image_path)
-            width, length = image.size
+            #image = Image.open(image_path)
+            #width, length = image.size
+            width, length = get_image_size.get_image_size(image_path)
             for item in data["form"]:
                 words, label = item["words"], item["label"]
                 words = [w for w in words if w["text"].strip() != ""]
                 if len(words) == 0:
                     continue
                 if label == "other":
+                    for w in words:
+                        fw.write(w["text"] + "\tO\n")
+                        fbw.write(
+                            w["text"]
+                            + "\t"
+                            + bbox_string(w["box"], width, length)
+                            + "\n"
+                        )
+                elif label == "other_group":
                     for w in words:
                         fw.write(w["text"] + "\tO\n")
                         fbw.write(
